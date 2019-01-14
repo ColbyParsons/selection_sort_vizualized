@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Selection Sort Visualized</title>
+    <style>
+    	
+    </style>
+</head>
+<body>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script>
+
+	var data = []
+
+    var numBars = 50;
+
+    for(i = 0; i < numBars; i++){
+       data[i] = (i+1)*2;
+    }
+
+    for(i = 0; i < numBars; i++){
+        var swap = Math.floor(Math.random()*(numBars-i)) + i;
+        temp = data[i];
+        data[i] = data[swap];
+        data[swap] = temp;
+    }
+
+	var margin = {"left":80,
+				  "right":80,
+				  "top":80,
+				  "bottom":60};
+
+	var body = d3.select("body");
+	var width = 1000;
+	var height = 480;
+	var barwidth = 10;
+	var titleHeight = 20;
+    var sorting = false;
+    var cancel = false;
+    var titleText = "Selection Sort Visualized";
+    var transitionSpeed = 30;
+
+	var svg = body.append("svg")
+				  .attr("width", width)
+				  .attr("height", height);
+
+	var xScaler = d3.scaleLinear()
+    	 			 .domain([0, numBars+1])
+    				 .range([0, width - margin.right - margin.left]);
+
+    var yScaler = d3.scaleLinear()
+                    .domain([0,100])
+                    .range([0,height - margin.top - margin.bottom])
+
+
+	var bargroup = svg.append("g")
+                      .attr("fill", "grey")
+
+    var xAxis = d3.axisBottom(xScaler);
+
+    var yAxis = d3.axisLeft(yScaler);
+
+    var xAxisView = svg.append("g")
+       				  .attr("transform","translate("+margin.left+","+(height-margin.bottom)+")")
+      				  .call(xAxis);
+
+    var yAxisView = svg.append("g")
+                      .attr("transform","translate("+margin.left+","+margin.top+")")
+                      .call(yAxis);
+
+    bars = bargroup.selectAll("rect")
+            .data(data)
+            .enter()
+            .append("rect")
+            .attr("width",barwidth)
+            .attr("height",d => yScaler(d))
+            .attr("y", d => height - margin.bottom - yScaler(d))
+            .attr("x",(d,i) => margin.left + xScaler(i+1) - barwidth/2);
+
+    var buttonBox = {
+                        "width":60,
+                        "height":20,
+                        "x":-6,
+                        "y":-15,
+                        "margin":4
+                    }
+
+    var buttonTrayY = height - margin.bottom + 45;
+    var buttonTrayX = margin.left;
+
+    var startButton = svg.append("g")
+                         .attr("transform","translate("+buttonTrayX+","+buttonTrayY+")")
+                         .style("cursor","pointer")
+                         .on("click",sortBars)
+                         .on("mouseover",function(){mouseoverButton(startButton)})
+                         .on("mouseout",function(){mouseoutButton(startButton)});
+
+    startButton.append("rect")
+               .attr("fill","#fff")
+               .style("stroke","#000")
+               .style("stroke-width",1)
+               .attr("width",buttonBox.width)
+               .attr("height",buttonBox.height)
+               .attr("x",buttonBox.x)
+               .attr("y",buttonBox.y);
+
+    startButton.append("text")
+               .text("Start")
+               .attr("x",8);
+
+    var resetButton = svg.append("g")
+                         .attr("transform","translate("+(buttonTrayX+buttonBox.width+buttonBox.margin)+","+buttonTrayY+")")
+                         .style("cursor","pointer")
+                         .on("click",reset)
+                         .on("mouseover",function(){mouseoverButton(resetButton)})
+                         .on("mouseout",function(){mouseoutButton(resetButton)});
+
+    resetButton.append("rect")
+               .attr("fill","#fff")
+               .style("stroke","#000")
+               .style("stroke-width",1)
+               .attr("width",buttonBox.width)
+               .attr("height",buttonBox.height)
+               .attr("x",buttonBox.x)
+               .attr("y",buttonBox.y);
+
+    resetButton.append("text")
+               .text("Reset")
+               .attr("x",5);
+
+    var cancelButton = svg.append("g")
+                         .attr("transform","translate("+(buttonTrayX+2*(buttonBox.width+buttonBox.margin))+","+buttonTrayY+")")
+                         .style("cursor","pointer")
+                         .on("click",cancelFn)
+                         .on("mouseover",function(){mouseoverButton(cancelButton)})
+                         .on("mouseout",function(){mouseoutButton(cancelButton)});
+
+    cancelButton.append("rect")
+               .attr("fill","#fff")
+               .style("stroke","#000")
+               .style("stroke-width",1)
+               .attr("width",buttonBox.width)
+               .attr("height",buttonBox.height)
+               .attr("x",buttonBox.x)
+               .attr("y",buttonBox.y);
+
+
+
+    cancelButton.append("text")
+               .text("Cancel")
+               .attr("x",1);
+
+
+    function mouseoverButton(button){
+        button.select("rect")
+              .attr("fill","#eee");
+    }
+
+    function mouseoutButton(button){
+        button.select("rect")
+              .attr("fill","#fff");
+    }
+
+
+    var sliderWidth = 200;
+    var sliderHeight = 5;
+    var speedMax = 200;
+    var speedMin = 5;
+    var circleX = sliderWidth - (sliderWidth/(speedMax - speedMin))*transitionSpeed;
+
+
+    var sliderGroup = svg.append("g")
+                         .attr("transform","translate("+(margin.left+50)+","+35+")");
+
+    sliderGroup.append("rect")
+               .attr("fill","#ddd")
+               .attr("width",sliderWidth)
+               .attr("height",sliderHeight)
+               .attr("rx",5)
+               .attr("ry",3);
+
+    var grabber = sliderGroup.append("circle")
+                             .attr("fill","#ddd")
+                             .style("stroke","#aaa")
+                             .style("stroke-width",1)
+                             .attr("r",8)
+                             .attr("cx",circleX)
+                             .attr("cy",sliderHeight/2);
+
+    sliderGroup.append("text")
+               .style("text-anchor","end")
+               .attr("x",-8)
+               .attr("y",0)
+               .text("Speed:")
+               .attr("dy", ".38em")
+
+
+    grabber.call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+
+    var startX = 0;
+    var newX;
+
+    function dragstarted(d) {
+      d3.select(this)
+        .attr("fill","#bbb");
+        startX = d3.event.x;
+    }
+
+    function dragged(d) {
+        newX = circleX + d3.event.x - startX;
+        if(newX > sliderWidth){
+            newX = sliderWidth;
+        }
+        if(newX < 0){
+            newX = 0;
+        }
+        d3.select(this)
+          .attr("cx", newX);
+
+        transitionSpeed = (newX-sliderWidth)/(sliderWidth/(speedMin - speedMax));
+    }
+
+    function dragended(d) {
+        d3.select(this)
+          .attr("fill","#ddd");
+        circleX = newX;
+    }
+
+
+    function swapBars(i,j,speed){
+        var temp = data[i];
+        data[i] = data[j];
+        data[j] = temp;
+
+        bars.filter((d,k) => k == i)
+            .attr("fill","red")
+            .transition()
+            .duration(speed)
+            .attr("x",margin.left + xScaler(j+1) - barwidth/2)
+            .transition()
+            .duration(0)
+            .attr("fill","grey")
+
+        bars.filter((d,k) => k == j)
+            .attr("fill","red")
+            .transition()
+            .duration(speed)
+            .attr("x",margin.left + xScaler(i+1) - barwidth/2)
+            .transition()
+            .duration(0)
+            .attr("fill","grey")
+            .on("end",updateBars);
+
+    }
+
+    function updateBars(){
+        bars.data(data)
+            .attr("width",barwidth)
+            .attr("height",d => yScaler(d))
+            .attr("y", d => height - margin.bottom - yScaler(d))
+            .attr("x",(d,i) => margin.left + xScaler(i+1) - barwidth/2);
+    }
+
+    function compare(list){
+        bars.filter((d,i) => list.includes(i))
+            .attr("fill","#0f0");
+    }
+
+    function uncompare(list){
+        bars.filter((d,i) => list.includes(i))
+            .attr("fill","grey");
+    }
+
+    const sleep = (milliseconds) => {
+        return new Promise(resolve => setTimeout(resolve, milliseconds))
+    }
+
+    async function sortBars(){
+        if(sorting) return;
+        sorting = true;
+        for(i = 0; i < numBars; i++){
+            var curMin = i;
+            compare([i]);
+            await sleep(transitionSpeed);
+            for(j = i; j < numBars; j++){
+                if(j == i)continue;
+                compare([j]);
+                await sleep(transitionSpeed);
+                if(data[j] < data[curMin]){
+                    uncompare([curMin]);
+                    curMin = j;
+                }else{
+                    uncompare([j]);
+                }
+                if(cancel){
+                    break;
+                }
+            }
+            if(cancel){
+                bars.attr("fill","grey");
+                break;
+            }
+            if(i != curMin){
+                swapBars(i,curMin,transitionSpeed*10);
+                await sleep(transitionSpeed*10);
+            }else{
+                uncompare([curMin]);
+            }
+            if(cancel){
+                bars.attr("fill","grey");
+                break;
+            }
+        }
+        sorting = false;
+        cancel = false;
+    }
+
+    async function reset() {
+        if(sorting) return;
+        sorting = true;
+        for(i = 0; i < numBars; i++){
+            var swap = Math.floor(Math.random()*(numBars-i)) + i;
+            swapBars(i,swap,50);
+            await sleep(50);
+            if(cancel){
+                break;
+                bars.attr("fill","grey");
+            }
+        }
+        sorting = false;
+        cancel = false;
+    }
+
+    function cancelFn(){
+        if(sorting){
+            cancel = true;
+        }
+    }
+
+	
+</script>
+
+</body>
+</html>
